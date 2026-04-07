@@ -1,0 +1,35 @@
+appId: id.pintarai.app
+productName: PintarAI
+copyright: Copyright © 2025 PintarAI
+
+directories:
+  output: release
+
+files:
+  - dist/**/*
+  - electron-dist/**/*
+  - package.json
+
+extraResources:
+  - from: resources/ollama/
+    to: ollama/
+    filter:
+      - "**/*"
+  - from: resources/models/
+    to: models/
+    filter:
+      - "**/*"
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: PintarAI
+
+publish: null

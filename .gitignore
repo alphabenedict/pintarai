@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+electron-dist/
+release/
+
+# Resources (contains 10GB+ model files for Electron — never commit)
+resources/
+
+# Android/Electron bundled model (copied by prepare scripts — never commit)
+public/models/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Env files
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android local config
+android/local.properties
+android/.gradle/
+android/app/build/
