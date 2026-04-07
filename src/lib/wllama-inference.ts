@@ -1,51 +1,195 @@
 import { Wllama } from '@wllama/wllama';
+import type { LocalModelStatus } from '../types';
 
-// Resolve absolute URLs — required inside Web Workers where relative URLs fail
 const BASE = typeof window !== 'undefined' ? window.location.origin : 'https://localhost';
 
-// Both WASM paths provided — wllama picks multi-thread automatically
-// when SharedArrayBuffer is available (enabled via COOP/COEP headers in MainActivity.java)
 const WLLAMA_CONFIG = {
   'single-thread/wllama.wasm': `${BASE}/wllama/single-thread/wllama.wasm`,
   'multi-thread/wllama.wasm': `${BASE}/wllama/multi-thread/wllama.wasm`,
 } as const;
 
-const MODEL_URL = `${BASE}/models/qwen2.5-0.5b.gguf`;
+const WLLAMA_OPTS = { allowOffline: true };
 
-let wllamaInstance: Wllama | null = null;
-let modelLoaded = false;
+const DESKTOP_GGUF_URL =
+  import.meta.env.VITE_ANDROID_LOCAL_GGUF_URL?.trim() ||
+  'http://127.0.0.1:11435/nemotron-mini.gguf';
+const DESKTOP_GGUF_NAME = 'nemotron:4b';
+
+const HF_MODEL_REPO = 'bartowski/Nemotron-Mini-4B-Instruct-GGUF';
+const HF_MODEL_FILE = 'Nemotron-Mini-4B-Instruct-Q4_K_M.gguf';
+const HF_MODEL_NAME = 'Nemotron-Mini-4B';
+
+const BUNDLED_MODEL_URL = `${BASE}/models/qwen2.5-0.5b.gguf`;
+const BUNDLED_MODEL_NAME = 'qwen2.5-0.5b';
+
+const MAX_HISTORY_PAIRS = 2;
 
 type ProgressCallback = (progress: number, status: string) => void;
 
-export async function initWllama(onProgress?: ProgressCallback): Promise<void> {
-  if (modelLoaded) return;
+type LocalModelState = {
+  status: LocalModelStatus;
+  progress: number;
+  statusText: string;
+  error: string | null;
+  modelName: string;
+};
 
-  onProgress?.(0, 'Mempersiapkan mesin AI...');
+let wllamaInstance: Wllama | null = null;
+let modelLoaded = false;
+let activeModelName = DESKTOP_GGUF_NAME;
+let initPromise: Promise<void> | null = null;
+let localModelState: LocalModelState = {
+  status: 'unloaded',
+  progress: 0,
+  statusText: 'AI lokal belum dimuat.',
+  error: null,
+  modelName: DESKTOP_GGUF_NAME,
+};
 
-  wllamaInstance = new Wllama(WLLAMA_CONFIG);
+const listeners = new Set<(state: LocalModelState) => void>();
 
-  onProgress?.(10, 'Memuat model AI (bisa 30-60 detik)...');
-
-  await wllamaInstance.loadModelFromUrl(MODEL_URL, {
-    n_ctx: 2048,
-    n_batch: 512,
-  });
-
-  modelLoaded = true;
-  onProgress?.(100, 'AI siap!');
+function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : 'Gagal memuat AI lokal';
 }
 
-// Qwen3 / ChatML chat template
-function formatQwenPrompt(
-  messages: { role: string; content: string }[],
-  systemPrompt: string
-): string {
-  let prompt = `<|im_start|>system\n${systemPrompt}<|im_end|>\n`;
-  for (const msg of messages) {
-    prompt += `<|im_start|>${msg.role}\n${msg.content}<|im_end|>\n`;
+function emitState() {
+  const snapshot = getLocalModelState();
+  listeners.forEach(listener => listener(snapshot));
+}
+
+function setLocalModelState(partial: Partial<LocalModelState>) {
+  localModelState = { ...localModelState, ...partial };
+  emitState();
+}
+
+function handleProgress(
+  onProgress: ProgressCallback | undefined,
+  baseProgress: number,
+  progressSpan: number,
+  label: string,
+  loaded: number,
+  total: number
+) {
+  if (total > 0) {
+    const pct = baseProgress + Math.round((loaded / total) * progressSpan);
+    const mb = Math.round(loaded / 1024 / 1024);
+    const totalMb = Math.round(total / 1024 / 1024);
+    const text = `${label} ${mb}/${totalMb}MB`;
+    onProgress?.(pct, text);
+    setLocalModelState({ status: 'loading', progress: pct, statusText: text, error: null });
+  } else {
+    const text = `${label} dari cache...`;
+    onProgress?.(baseProgress + Math.round(progressSpan / 2), text);
+    setLocalModelState({
+      status: 'loading',
+      progress: baseProgress + Math.round(progressSpan / 2),
+      statusText: text,
+      error: null,
+    });
   }
-  prompt += '<|im_start|>assistant\n';
-  return prompt;
+}
+
+export function getLocalModelState(): LocalModelState {
+  return { ...localModelState };
+}
+
+export function subscribeLocalModelState(listener: (state: LocalModelState) => void): () => void {
+  listeners.add(listener);
+  listener(getLocalModelState());
+  return () => listeners.delete(listener);
+}
+
+export async function initWllama(onProgress?: ProgressCallback): Promise<void> {
+  if (modelLoaded) {
+    onProgress?.(100, 'AI siap!');
+    setLocalModelState({ status: 'ready', progress: 100, statusText: 'AI siap!', error: null });
+    return;
+  }
+
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    setLocalModelState({
+      status: 'loading',
+      progress: 0,
+      statusText: 'Mempersiapkan AI lokal...',
+      error: null,
+      modelName: DESKTOP_GGUF_NAME,
+    });
+    onProgress?.(0, 'Mempersiapkan AI lokal...');
+
+    wllamaInstance = new Wllama(WLLAMA_CONFIG, WLLAMA_OPTS);
+    const nThreads = Math.min(4, (navigator.hardwareConcurrency ?? 2) - 1) || 1;
+
+    try {
+      await wllamaInstance.loadModelFromUrl(DESKTOP_GGUF_URL, {
+        n_ctx: 512,
+        n_batch: 256,
+        n_threads: nThreads,
+        useCache: true,
+        progressCallback: ({ loaded, total }) => {
+          handleProgress(onProgress, 4, 88, 'Mengunduh Gemma 4 dari komputer...', loaded, total);
+        },
+      });
+      activeModelName = DESKTOP_GGUF_NAME;
+    } catch {
+      try {
+        await wllamaInstance.loadModelFromHF(HF_MODEL_REPO, HF_MODEL_FILE, {
+          n_ctx: 256,
+          n_batch: 128,
+          n_threads: nThreads,
+          useCache: true,
+          progressCallback: ({ loaded, total }) => {
+            handleProgress(onProgress, 8, 82, 'Mengunduh Gemma ringan...', loaded, total);
+          },
+        });
+        activeModelName = HF_MODEL_NAME;
+      } catch {
+        onProgress?.(10, 'Memuat model offline bawaan...');
+        setLocalModelState({
+          status: 'loading',
+          progress: 10,
+          statusText: 'Memuat model offline bawaan...',
+          error: null,
+          modelName: BUNDLED_MODEL_NAME,
+        });
+
+        wllamaInstance = new Wllama(WLLAMA_CONFIG, WLLAMA_OPTS);
+        await wllamaInstance.loadModelFromUrl(BUNDLED_MODEL_URL, {
+          n_ctx: 256,
+          n_batch: 128,
+          n_threads: nThreads,
+          useCache: true,
+        });
+        activeModelName = BUNDLED_MODEL_NAME;
+      }
+    }
+
+    modelLoaded = true;
+    onProgress?.(100, 'AI siap!');
+    setLocalModelState({
+      status: 'ready',
+      progress: 100,
+      statusText: 'AI siap!',
+      error: null,
+      modelName: activeModelName,
+    });
+  })().catch(err => {
+    modelLoaded = false;
+    wllamaInstance = null;
+    setLocalModelState({
+      status: 'error',
+      progress: 0,
+      statusText: 'Gagal memuat AI lokal.',
+      error: getErrorMessage(err),
+      modelName: DESKTOP_GGUF_NAME,
+    });
+    throw err;
+  }).finally(() => {
+    initPromise = null;
+  });
+
+  return initPromise;
 }
 
 export async function* wllamaChat(
@@ -56,57 +200,55 @@ export async function* wllamaChat(
     throw new Error('Model belum dimuat');
   }
 
-  const prompt = formatQwenPrompt(messages, systemPrompt);
+  const trimmed = messages.length > MAX_HISTORY_PAIRS * 2
+    ? messages.slice(-(MAX_HISTORY_PAIRS * 2))
+    : messages;
 
-  // Use a queue pattern to convert callback-based streaming to AsyncGenerator
+  const decoder = new TextDecoder();
   const queue: string[] = [];
   let done = false;
-  let error: Error | null = null;
-  let resolve: (() => void) | null = null;
+  let resolver: (() => void) | null = null;
 
-  const notify = () => {
-    if (resolve) {
-      resolve();
-      resolve = null;
+  const flush = () => {
+    if (resolver) {
+      resolver();
+      resolver = null;
     }
   };
 
-  // Start generation (don't await — stream below)
-  wllamaInstance!.createCompletion(prompt, {
-    nPredict: 1024,
-    sampling: {
-      temp: 0.7,
-      top_p: 0.9,
-      top_k: 40,
-    },
-    onNewToken: (_token: number, piece: Uint8Array, _currentText: string, _optionals: unknown) => {
-      // Decode piece bytes to string
-      const text = new TextDecoder().decode(piece);
-      // Filter out stop tokens
-      if (text && !text.includes('<|im_end|>') && !text.includes('<|im_start|>')) {
-        queue.push(text);
-        notify();
-      }
-    },
-  }).then(() => {
+  wllamaInstance.createChatCompletion(
+    [
+      { role: 'system', content: systemPrompt },
+      ...trimmed.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+    ],
+    {
+      nPredict: 80,
+      sampling: { temp: 0.4, top_p: 0.9, top_k: 20 },
+      onNewToken: (_token, piece) => {
+        const text = decoder.decode(piece);
+        if (text) {
+          queue.push(text);
+          flush();
+        }
+      },
+    }
+  ).then(() => {
     done = true;
-    notify();
-  }).catch((err: Error) => {
-    error = err;
+    flush();
+  }).catch(() => {
     done = true;
-    notify();
+    flush();
   });
 
-  // Yield tokens as they arrive
   while (!done || queue.length > 0) {
     if (queue.length > 0) {
       yield queue.shift()!;
-    } else if (!done) {
-      await new Promise<void>(r => { resolve = r; });
+    } else {
+      await new Promise<void>(resolve => {
+        resolver = resolve;
+      });
     }
   }
-
-  if (error) throw error;
 }
 
 export function isModelLoaded(): boolean {

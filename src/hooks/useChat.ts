@@ -1,22 +1,26 @@
-import { useState, useCallback } from 'react';
-import { Message, Subject } from '../types';
+import { useCallback, useState } from 'react';
 import { chatStream } from '../lib/inference';
+import { isGroqReady } from '../lib/groq';
+import { SUBJECT_PROMPTS } from '../constants';
+import type { ActiveBackend, Message, Subject } from '../types';
 
-const SYSTEM_PROMPT = `Kamu adalah PintarAI, asisten belajar yang ramah, sabar, dan pintar untuk siswa sekolah di Indonesia (SD, SMP, SMA).
-Tugasmu adalah membantu siswa belajar dengan cara yang menyenangkan dan mudah dipahami.
-Gunakan bahasa Indonesia yang baik dan mudah dipahami sesuai usia siswa.
-Berikan penjelasan dengan contoh yang dekat dengan kehidupan sehari-hari di Indonesia.
-Selalu beri semangat dan pujian ketika siswa bertanya atau berusaha belajar.
-Jika tidak tahu jawaban, katakan dengan jujur dan sarankan untuk bertanya ke guru.
-Jawab dengan singkat dan jelas. Gunakan emoji sesekali untuk membuat suasana lebih menyenangkan.`;
+// Short prompt keeps time-to-first-token fast on local inference.
+const SYSTEM_PROMPT = `Kamu adalah PintarAI, tutor AI untuk siswa Indonesia.
+Jawab SINGKAT (maks 3 kalimat) dalam Bahasa Indonesia yang jelas.
+Beri langkah atau contoh jika diperlukan. Jika tidak yakin, katakan jujur.`;
+
+// Keep only the latest 2 back-and-forth pairs for fast local fallback.
+const MAX_HISTORY = 4;
 
 export function useChat(activeModel: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentSubject, setCurrentSubject] = useState<Subject | null>(null);
+  const [activeBackend, setActiveBackend] = useState<ActiveBackend>(null);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || !activeModel) return;
+    if (!content.trim()) return;
+    if (!activeModel && !isGroqReady()) return;
 
     const userMsg: Message = {
       id: crypto.randomUUID(),
@@ -36,24 +40,34 @@ export function useChat(activeModel: string) {
     setIsLoading(true);
 
     try {
-      const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
+      const history = [...messages, userMsg]
+        .slice(-MAX_HISTORY)
+        .map(message => ({ role: message.role, content: message.content }));
+
       const subjectContext = currentSubject
-        ? `\n\nSiswa sedang belajar mata pelajaran: ${currentSubject.name}. Fokuskan jawaban pada topik ini jika relevan.`
+        ? `\nMata pelajaran: ${currentSubject.name}. ${SUBJECT_PROMPTS[currentSubject.id] ?? ''}`
         : '';
 
-      for await (const chunk of chatStream(history, activeModel, SYSTEM_PROMPT + subjectContext)) {
+      for await (const chunk of chatStream(
+        history,
+        activeModel,
+        SYSTEM_PROMPT + subjectContext,
+        backend => setActiveBackend(backend)
+      )) {
         setMessages(prev =>
-          prev.map(m =>
-            m.id === assistantMsg.id ? { ...m, content: m.content + chunk } : m
+          prev.map(message =>
+            message.id === assistantMsg.id
+              ? { ...message, content: message.content + chunk }
+              : message
           )
         );
       }
     } catch {
       setMessages(prev =>
-        prev.map(m =>
-          m.id === assistantMsg.id
-            ? { ...m, content: 'Maaf, ada masalah koneksi ke AI. Pastikan Ollama sudah berjalan ya! 🔧' }
-            : m
+        prev.map(message =>
+          message.id === assistantMsg.id
+            ? { ...message, content: 'Maaf, ada masalah. Pastikan AI sudah aktif ya!' }
+            : message
         )
       );
     } finally {
@@ -65,5 +79,13 @@ export function useChat(activeModel: string) {
     setMessages([]);
   }, []);
 
-  return { messages, isLoading, sendMessage, clearChat, currentSubject, setCurrentSubject };
+  return {
+    messages,
+    isLoading,
+    sendMessage,
+    clearChat,
+    currentSubject,
+    setCurrentSubject,
+    activeBackend,
+  };
 }

@@ -1,21 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { checkOllamaStatus } from '../lib/ollama';
-import { isAndroid } from '../lib/inference';
+import { isAndroid, prepareInference } from '../lib/inference';
+import { getLocalModelState, subscribeLocalModelState } from '../lib/android-local-ai';
+import type { LocalModelStatus } from '../types';
 
-const ANDROID_MODEL = 'qwen3.5:0.8b';
-const BUNDLED_MODEL_OLLAMA = 'gemma4:e4b';
+const BUNDLED_MODEL_OLLAMA = 'gemma4:e2b';
 
 export function useOllama() {
   const [status, setStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
   const [models, setModels] = useState<string[]>([]);
   const [activeModel, setActiveModel] = useState<string>('');
+  const [localStatus, setLocalStatus] = useState<LocalModelStatus>(() => getLocalModelState().status);
+  const [localProgress, setLocalProgress] = useState<number>(() => getLocalModelState().progress);
+  const [localStatusText, setLocalStatusText] = useState<string>(() => getLocalModelState().statusText);
+  const [localError, setLocalError] = useState<string | null>(() => getLocalModelState().error);
+  const [localModelName, setLocalModelName] = useState<string>(() => getLocalModelState().modelName);
 
   const check = async () => {
-    // On Android: wllama handles inference, no Ollama needed
     if (isAndroid()) {
-      setStatus('connected');
-      setModels([ANDROID_MODEL]);
-      setActiveModel(ANDROID_MODEL);
+      try {
+        await prepareInference();
+      } catch {
+        // The shared local model state already captures the error details.
+      }
       return;
     }
 
@@ -25,8 +32,11 @@ export function useOllama() {
       setStatus('connected');
       setModels(result.models);
       const preferred =
-        result.models.find(m => m.includes('gemma4')) ??
-        result.models.find(m => m.includes('qwen')) ??
+        result.models.find(model => model.includes('gemma4:e2b')) ??
+        result.models.find(model => model.includes('gemma4')) ??
+        result.models.find(model => model.includes('gemma3n')) ??
+        result.models.find(model => model.includes('gemma')) ??
+        result.models.find(model => model.includes('qwen')) ??
         result.models[0] ??
         BUNDLED_MODEL_OLLAMA;
       setActiveModel(preferred);
@@ -37,12 +47,41 @@ export function useOllama() {
   };
 
   useEffect(() => {
-    check();
-    if (!isAndroid()) {
-      const interval = setInterval(check, 15000);
-      return () => clearInterval(interval);
+    if (isAndroid()) {
+      setModels([localModelName]);
+      setActiveModel(localModelName);
+      return subscribeLocalModelState(state => {
+        setLocalStatus(state.status);
+        setLocalProgress(state.progress);
+        setLocalStatusText(state.statusText);
+        setLocalError(state.error);
+        setLocalModelName(state.modelName);
+        setModels([state.modelName]);
+        setActiveModel(state.modelName);
+      });
     }
+
+    check();
+    const interval = setInterval(check, 15000);
+    return () => clearInterval(interval);
   }, []);
 
-  return { status, models, activeModel, retry: check };
+  const derivedStatus = isAndroid()
+    ? localStatus === 'ready'
+      ? 'connected'
+      : localStatus === 'error'
+        ? 'disconnected'
+        : 'checking'
+    : status;
+
+  return {
+    status: derivedStatus,
+    models,
+    activeModel: isAndroid() ? localModelName : activeModel,
+    retry: check,
+    localStatus,
+    localProgress,
+    localStatusText,
+    localError,
+  };
 }

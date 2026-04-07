@@ -6,6 +6,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.BridgeWebViewClient;
+import id.pintarai.app.localai.LocalAiPlugin;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,6 +14,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(LocalAiPlugin.class);
         super.onCreate(savedInstanceState);
 
         // COOP/COEP headers enable SharedArrayBuffer in WebView

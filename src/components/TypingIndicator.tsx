@@ -1,72 +1,40 @@
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Bot } from 'lucide-react';
 
 export function TypingIndicator() {
-  const dotVariants = {
-    initial: { y: 0 },
-    animate: { y: -8 },
-  };
-
-  const containerVariants = {
-    initial: {},
-    animate: {
-      transition: {
-        staggerChildren: 0.15,
-        repeat: Infinity,
-        repeatType: 'mirror' as const,
-      },
-    },
-  };
+  const prefersReduced = useReducedMotion();
 
   return (
-    <div className="flex items-start gap-3 mb-4">
-      {/* Mini owl avatar */}
+    <div className="flex items-start gap-2.5 mb-3">
       <div
-        className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-lg"
-        style={{
-          backgroundColor: '#2563EB',
-          boxShadow: '0 3px 0 #1d4ed8, 0 4px 8px rgba(37,99,235,0.3)',
-        }}
+        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+        style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}
+        aria-hidden="true"
       >
-        🦉
+        <Bot className="w-4 h-4 text-white" />
       </div>
 
       <motion.div
-        className="flex items-center gap-2 px-5 py-4 rounded-3xl"
-        style={{
-          backgroundColor: 'white',
-          borderRadius: '24px 24px 24px 4px',
-          boxShadow: '0 6px 0 #e2e8f0, 0 8px 16px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)',
-        }}
-        initial={{ opacity: 0, scale: 0.8, x: -10 }}
-        animate={{ opacity: 1, scale: 1, x: 0 }}
-        exit={{ opacity: 0, scale: 0.8, x: -10 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+        className="glass px-4 py-3 flex items-center gap-3"
+        style={{ borderRadius: '4px 18px 18px 18px', borderLeft: '2px solid #6366F1' }}
+        initial={{ opacity: 0, x: -8 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        role="status"
+        aria-label="PintarAI sedang berpikir"
       >
-        <motion.div
-          className="flex gap-1.5"
-          variants={containerVariants}
-          initial="initial"
-          animate="animate"
-        >
+        <div className="flex items-center gap-1">
           {[0, 1, 2].map(i => (
             <motion.span
               key={i}
-              variants={dotVariants}
-              transition={{
-                duration: 0.4,
-                ease: 'easeInOut',
-                repeat: Infinity,
-                repeatType: 'mirror',
-                delay: i * 0.15,
-              }}
-              className="block w-2.5 h-2.5 rounded-full"
-              style={{ backgroundColor: '#2563EB' }}
+              className="block w-2 h-2 rounded-full bg-indigo-400"
+              animate={prefersReduced ? {} : { y: [0, -5, 0] }}
+              transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
             />
           ))}
-        </motion.div>
-        <span className="text-xs font-comic ml-1" style={{ color: '#64748b' }}>
-          PintarAI sedang berpikir...
-        </span>
+        </div>
+        <span className="text-xs text-slate-500">Sedang berpikir...</span>
       </motion.div>
     </div>
   );

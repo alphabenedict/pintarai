@@ -1,57 +1,70 @@
 #!/usr/bin/env node
 /**
- * prepare-android.js
- * Copies qwen3.5:0.8b GGUF from Ollama blobs to public/models/
- * Run: node scripts/prepare-android.js
+ * prepare-android.cjs
+ *
+ * Stages an exported Nemotron Mini ONNX package into public/local-ai/
+ * for sideload/dev installs on Android.
  */
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
-const HOME = process.env.USERPROFILE || process.env.HOME;
-const BLOBS_DIR = path.join(HOME, '.ollama', 'models', 'blobs');
-const DEST_DIR = path.join(__dirname, '..', 'public', 'models');
+const SRC_DIR = path.resolve(process.argv[2] || path.join(__dirname, '..', 'dist', 'nemotron-mini-int4'));
+const DEST_DIR = path.resolve(path.join(__dirname, '..', 'public', 'local-ai', 'nemotron-mini-int4'));
+const MANIFEST_SCRIPT = path.resolve(path.join(__dirname, 'generate-android-model-manifest.mjs'));
 
-// qwen2.5:0.5b model weights blob (~397MB, fits in Android WebView WASM)
-const MODEL_BLOB = 'sha256-c5396e06af294bd101b30dce59131a76d2b773e76950acc870eda801d3ab0515';
-const MODEL_DEST = 'qwen2.5-0.5b.gguf';
-
-async function main() {
-  console.log('\n🦉 PintarAI Android - Prepare Model\n');
-
-  // Also ensure wllama WASM is in public/wllama/single-thread/
-  const wasmSrc = path.join(__dirname, '..', 'node_modules/@wllama/wllama/esm/single-thread/wllama.wasm');
-  const wasmDest = path.join(__dirname, '..', 'public/wllama/single-thread/wllama.wasm');
-  if (!fs.existsSync(wasmDest)) {
-    fs.mkdirSync(path.dirname(wasmDest), { recursive: true });
-    fs.copyFileSync(wasmSrc, wasmDest);
-    console.log('✓ wllama WASM copied to public/wllama/single-thread/');
-  }
-
-  const src = path.join(BLOBS_DIR, MODEL_BLOB);
-  const dest = path.join(DEST_DIR, MODEL_DEST);
-
-  if (!fs.existsSync(src)) {
-    console.error(`✗ Model blob not found: ${src}`);
-    console.error('  Run: ollama pull qwen3.5:0.8b');
-    process.exit(1);
-  }
-
-  fs.mkdirSync(DEST_DIR, { recursive: true });
-
-  // Skip if already copied and same size
-  if (fs.existsSync(dest) && fs.statSync(dest).size === fs.statSync(src).size) {
-    console.log(`✓ Model already prepared: ${MODEL_DEST}`);
-    console.log('  Run "npm run build:android" to build the APK.\n');
+function copyRecursive(src, dest) {
+  const stat = fs.statSync(src);
+  if (stat.isDirectory()) {
+    fs.mkdirSync(dest, { recursive: true });
+    for (const entry of fs.readdirSync(src)) {
+      copyRecursive(path.join(src, entry), path.join(dest, entry));
+    }
     return;
   }
 
-  const sizeMB = (fs.statSync(src).size / 1e6).toFixed(0);
-  console.log(`→ Copying qwen3.5:0.8b GGUF (${sizeMB} MB)...`);
-  console.log('  This may take a minute...');
-
+  fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.copyFileSync(src, dest);
-  console.log(`✓ Done: public/models/${MODEL_DEST}`);
-  console.log('\n  Now run: npm run build:android\n');
 }
 
-main().catch(console.error);
+function main() {
+  console.log('\nPintarAI Android - Stage Nemotron Mini ONNX\n');
+
+  if (!fs.existsSync(SRC_DIR)) {
+    console.error(`Export folder not found: ${SRC_DIR}`);
+    console.error('Run "npm run export:model:android" first, or pass the exported folder path.');
+    process.exit(1);
+  }
+
+  fs.rmSync(DEST_DIR, { recursive: true, force: true });
+  fs.mkdirSync(DEST_DIR, { recursive: true });
+  copyRecursive(SRC_DIR, DEST_DIR);
+
+  const manifestResult = spawnSync(
+    process.execPath,
+    [
+      MANIFEST_SCRIPT,
+      '--input', DEST_DIR,
+      '--output', path.join(DEST_DIR, 'manifest.json'),
+      '--model-id', 'nemotron-mini-int4',
+      '--model-name', 'Nemotron Mini 4B INT4',
+      '--entry-file', 'decoder_model_merged.onnx',
+      '--tokenizer-file', 'tokenizer.json',
+      '--generation-config-file', 'generation_config.json',
+      '--tokenizer-config-file', 'tokenizer_config.json',
+      '--context-window', '2048',
+      '--required-ram-mb', '4096',
+    ],
+    { stdio: 'inherit' }
+  );
+
+  if (manifestResult.status !== 0) {
+    process.exit(manifestResult.status ?? 1);
+  }
+
+  console.log(`\nModel staged at: ${DEST_DIR}`);
+  console.log('Next: run "npm run build:android" to sync the staged manifest into the Android app.');
+  console.log('Note: public/local-ai/ is gitignored. Do not commit staged model artifacts.\n');
+}
+
+main();

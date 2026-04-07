@@ -10,10 +10,13 @@
     "dev:electron": "concurrently \"vite --port 5173\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "tsc -b && vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
+    "export:model:android": "python scripts/export-nemotron-onnx.py",
+    "manifest:model:android": "node scripts/generate-android-model-manifest.mjs",
+    "validate:model:android": "python scripts/validate-nemotron-export.py",
     "prepare-bundle": "node scripts/prepare-bundle.js",
     "dist": "npm run build && npm run build:electron && electron-builder",
     "preview": "vite preview",
-    "prepare-android": "node scripts/prepare-android.js",
+    "prepare-android": "node scripts/prepare-android.cjs",
     "build:android": "npm run build && npx cap sync android",
     "open:android": "npx cap open android"
   },
@@ -23,11 +26,17 @@
     "@capacitor/core": "^8.3.0",
     "@fontsource/baloo-2": "^5.1.0",
     "@fontsource/comic-neue": "^5.1.0",
+    "@fontsource/inter": "^5.2.8",
+    "@radix-ui/react-collapsible": "^1.1.12",
+    "@radix-ui/react-slot": "^1.2.4",
     "@wllama/wllama": "^2.3.7",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "framer-motion": "^11.3.0",
     "lucide-react": "^0.400.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

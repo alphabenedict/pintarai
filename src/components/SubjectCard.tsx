@@ -6,14 +6,7 @@ import {
 import { Subject } from '../types';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Calculator,
-  BookOpen,
-  Microscope,
-  Globe,
-  Flag,
-  Languages,
-  Palette,
-  Sparkles,
+  Calculator, BookOpen, Microscope, Globe, Flag, Languages, Palette, Sparkles,
 };
 
 interface SubjectCardProps {
@@ -27,42 +20,27 @@ export function SubjectCard({ subject, onClick }: SubjectCardProps) {
   return (
     <motion.button
       onClick={() => onClick(subject)}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -4, transition: { type: 'spring', stiffness: 400, damping: 20 } }}
-      whileTap={{ scale: 0.95, y: 4 }}
-      className="w-full text-left p-5 flex flex-col items-center gap-3 cursor-pointer"
+      whileTap={{ scale: 0.96 }}
+      className="w-full text-left flex flex-col gap-2.5 p-3.5 rounded-glass-lg cursor-pointer"
       style={{
-        backgroundColor: subject.bgColor,
-        borderRadius: '32px',
-        boxShadow: `0 8px 0 ${subject.shadowColor}40, 0 12px 20px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.6)`,
-        border: `2px solid ${subject.color}20`,
-        transition: 'box-shadow 0.15s ease',
+        background: 'rgba(255,255,255,0.5)',
+        border: '1px solid rgba(255,255,255,0.8)',
+        transition: 'background 0.15s ease',
       }}
+      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.75)')}
+      onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.5)')}
     >
-      <motion.div
-        className="w-14 h-14 rounded-2xl flex items-center justify-center"
-        style={{
-          backgroundColor: subject.color,
-          boxShadow: `0 4px 0 ${subject.shadowColor}, 0 6px 12px ${subject.color}40, inset 0 1px 0 rgba(255,255,255,0.3)`,
-        }}
+      {/* Icon circle with subject color */}
+      <div
+        className="w-9 h-9 rounded-xl flex items-center justify-center"
+        style={{ backgroundColor: subject.color + '18', color: subject.color }}
       >
-        <Icon className="w-7 h-7 text-white" />
-      </motion.div>
+        <Icon className="w-5 h-5" />
+      </div>
 
-      <div className="text-center">
-        <p
-          className="font-baloo font-bold text-base leading-tight"
-          style={{ color: '#1E293B' }}
-        >
-          {subject.name}
-        </p>
-        <p
-          className="font-comic text-xs mt-1 leading-snug"
-          style={{ color: subject.color }}
-        >
-          {subject.description}
-        </p>
+      <div>
+        <p className="text-sm font-semibold text-slate-700 leading-tight">{subject.name}</p>
+        <p className="text-xs text-slate-400 mt-0.5 leading-snug">{subject.description}</p>
       </div>
     </motion.button>
   );

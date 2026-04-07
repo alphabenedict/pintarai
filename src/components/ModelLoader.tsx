@@ -1,105 +1,102 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import { prepareInference } from '../lib/inference';
 
 interface ModelLoaderProps {
-  onReady: () => void;
-  onError: (err: string) => void;
+  progress: number;
+  status: string;
 }
 
-export function ModelLoader({ onReady, onError }: ModelLoaderProps) {
-  const [progress, setProgress] = useState(0);
-  const [status, setStatus] = useState('Mempersiapkan PintarAI...');
-
-  useEffect(() => {
-    prepareInference(({ progress, status }) => {
-      setProgress(progress);
-      setStatus(status);
-    })
-      .then(onReady)
-      .catch(err => onError(err?.message ?? 'Gagal memuat AI'));
-  }, []);
-
+export function ModelLoader({ progress, status }: ModelLoaderProps) {
   return (
     <div
+      className="safe-top safe-bottom"
       style={{
         minHeight: '100dvh',
-        background: 'linear-gradient(135deg, #EFF6FF 0%, #F8FAFC 100%)',
+        background: 'linear-gradient(135deg, #E0E7FF 0%, #EFF6FF 50%, #E0F2FE 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        fontFamily: "'Baloo 2', system-ui, sans-serif",
-        padding: '24px',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        padding: '32px 24px',
       }}
     >
-      {/* Owl mascot bounce */}
-      <motion.div
-        animate={{ y: [0, -16, 0] }}
-        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-        style={{ fontSize: 80, marginBottom: 24 }}
-      >
-        🦉
-      </motion.div>
-
-      <h1
-        style={{
-          fontSize: 36,
-          fontWeight: 800,
-          margin: '0 0 8px',
-          background: 'linear-gradient(135deg, #2563EB, #7C3AED)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-        }}
-      >
-        PintarAI
-      </h1>
-
-      <p
-        style={{
-          color: '#64748b',
-          fontSize: 16,
-          marginBottom: 32,
-          textAlign: 'center',
-        }}
-      >
-        {status}
-      </p>
-
-      {/* Progress bar */}
       <div
         style={{
-          width: '100%',
+          background: 'rgba(255,255,255,0.65)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255,255,255,0.85)',
+          borderRadius: 24,
+          padding: '40px 32px',
           maxWidth: 320,
-          height: 12,
-          background: '#E2E8F0',
-          borderRadius: 9999,
-          overflow: 'hidden',
-          boxShadow: '0 2px 8px rgba(37,99,235,0.15)',
+          width: '100%',
+          boxShadow: '0 8px 32px rgba(99,102,241,0.1)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 0,
         }}
       >
-        <motion.div
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.5 }}
+        <div
           style={{
-            height: '100%',
-            background: 'linear-gradient(90deg, #2563EB, #7C3AED)',
-            borderRadius: 9999,
+            width: 72,
+            height: 72,
+            borderRadius: 24,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'linear-gradient(135deg, #6366F1, #0EA5E9)',
+            boxShadow: '0 12px 24px rgba(79,70,229,0.2)',
+            color: 'white',
+            fontWeight: 800,
+            fontSize: 22,
           }}
-        />
-      </div>
+        >
+          AI
+        </div>
 
-      <p
-        style={{
-          color: '#94a3b8',
-          fontSize: 13,
-          marginTop: 16,
-          textAlign: 'center',
-          whiteSpace: 'pre-line',
-        }}
-      >
-        {'Memuat model AI ke dalam memori...\nIni hanya terjadi sekali saat pertama dibuka.'}
-      </p>
+        <h1
+          style={{
+            fontFamily: "'Baloo 2', cursive",
+            fontSize: 32,
+            fontWeight: 800,
+            margin: '16px 0 4px',
+            color: '#4F46E5',
+          }}
+        >
+          PintarAI
+        </h1>
+
+        <p style={{ color: '#64748B', fontSize: 14, margin: '0 0 28px', textAlign: 'center' }}>
+          {status}
+        </p>
+
+        <div
+          style={{
+            width: '100%',
+            height: 6,
+            background: 'rgba(99,102,241,0.12)',
+            borderRadius: 9999,
+            overflow: 'hidden',
+          }}
+        >
+          <motion.div
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
+            style={{
+              height: '100%',
+              background: 'linear-gradient(90deg, #818CF8, #6366F1)',
+              borderRadius: 9999,
+            }}
+          />
+        </div>
+
+        <p style={{ color: '#94A3B8', fontSize: 12, marginTop: 12, textAlign: 'center' }}>
+          {progress < 100
+            ? 'Menyiapkan AI lokal... unduhan pertama bisa memakan waktu beberapa menit.'
+            : 'AI siap!'}
+        </p>
+      </div>
     </div>
   );
 }

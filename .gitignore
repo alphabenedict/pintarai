@@ -11,6 +11,7 @@ resources/
 
 # Android/Electron bundled model (copied by prepare scripts — never commit)
 public/models/
+public/local-ai/
 
 # TypeScript build info
 *.tsbuildinfo

@@ -105,14 +105,19 @@ function createLoadingWindow(): BrowserWindow {
     box-shadow: 0 24px 60px rgba(37,99,235,0.18), 0 8px 0 #1d4ed8;
     border: 2px solid rgba(255,255,255,0.8);
   }
-  .owl {
-    font-size: 72px;
-    margin-bottom: 16px;
+  .logo {
+    width: 80px; height: 80px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #6366F1, #0EA5E9);
+    box-shadow: 0 12px 28px rgba(99,102,241,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; font-weight: 800; color: white;
+    margin-bottom: 20px;
     animation: bounce 1.8s ease-in-out infinite;
   }
   @keyframes bounce {
     0%,100% { transform: translateY(0px); }
-    50% { transform: translateY(-12px); }
+    50% { transform: translateY(-10px); }
   }
   h1 {
     font-size: 32px; font-weight: 800;
@@ -145,7 +150,7 @@ function createLoadingWindow(): BrowserWindow {
 </style>
 </head>
 <body>
-  <div class="owl">🦉</div>
+  <div class="logo">AI</div>
   <h1>PintarAI</h1>
   <p>Memuat AI, harap tunggu...</p>
   <div class="dots">

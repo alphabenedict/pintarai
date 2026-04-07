@@ -2,6 +2,9 @@ ext {
     minSdkVersion = 24
     compileSdkVersion = 36
     targetSdkVersion = 36
+    kotlinVersion = '2.2.0'
+    onnxRuntimeVersion = '1.24.2'
+    djlTokenizersVersion = '0.36.0'
     androidxActivityVersion = '1.11.0'
     androidxAppCompatVersion = '1.7.1'
     androidxCoordinatorLayoutVersion = '1.3.0'
