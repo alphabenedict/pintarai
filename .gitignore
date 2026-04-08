@@ -28,3 +28,12 @@ Thumbs.db
 android/local.properties
 android/.gradle/
 android/app/build/
+*.bin
+gemma-2b*.bin
+
+# IDE and Caches
+.claude/
+.idea/
+.olive-cache/
+android/.gradle-user/
+android/.idea/

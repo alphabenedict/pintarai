@@ -149,18 +149,27 @@ export async function initWllama(onProgress?: ProgressCallback): Promise<void> {
         setLocalModelState({
           status: 'loading',
           progress: 10,
-          statusText: 'Memuat model offline bawaan...',
+          statusText: 'Memuat file AI internal (ini butuh waktu sejenak)...',
           error: null,
           modelName: BUNDLED_MODEL_NAME,
         });
 
         wllamaInstance = new Wllama(WLLAMA_CONFIG, WLLAMA_OPTS);
-        await wllamaInstance.loadModelFromUrl(BUNDLED_MODEL_URL, {
+        
+        // Fix Capacitor Range Request Bug: Fetch entire file into RAM first
+        const response = await fetch(BUNDLED_MODEL_URL);
+        if (!response.ok) throw new Error(`Bundled model fetch failed: ${response.status}`);
+        
+        onProgress?.(50, 'Mengekstrak model ke memori...');
+        const buffer = await response.arrayBuffer();
+        const blob = new Blob([buffer]);
+        
+        await wllamaInstance.loadModel([blob], {
           n_ctx: 256,
           n_batch: 128,
           n_threads: nThreads,
-          useCache: true,
         });
+        
         activeModelName = BUNDLED_MODEL_NAME;
       }
     }

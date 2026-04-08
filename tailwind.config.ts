@@ -8,11 +8,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: '#6366F1',
-        'primary-dark': '#4F46E5',
-        'primary-light': '#EEF2FF',
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+          dark: '#4F46E5',
+          light: '#EEF2FF',
+        },
         accent: '#0EA5E9',
-        background: '#EEF2FF',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        ring: 'hsl(var(--ring))',
         surface: 'rgba(255,255,255,0.6)',
         'text-main': '#0F172A',
         'text-muted': '#64748B',

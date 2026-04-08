@@ -20,6 +20,15 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* shadcn theme tokens (used by ui components) */
+  --background: 226 100% 95%;
+  --foreground: 222 47% 11%;
+  --muted: 226 25% 83%;
+  --muted-foreground: 215 16% 47%;
+  --primary: 239 84% 67%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 239 84% 67%;
 }
 
 /* ─── Base ──────────────────────────────────────────────── */

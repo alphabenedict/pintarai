@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { SegmentedProgress } from '@/components/ui/progress-bar';
 
 interface ModelLoaderProps {
   progress: number;
@@ -8,92 +8,39 @@ interface ModelLoaderProps {
 export function ModelLoader({ progress, status }: ModelLoaderProps) {
   return (
     <div
-      className="safe-top safe-bottom"
+      className="safe-top safe-bottom min-h-[100dvh] flex flex-col items-center justify-center p-8"
       style={{
-        minHeight: '100dvh',
         background: 'linear-gradient(135deg, #E0E7FF 0%, #EFF6FF 50%, #E0F2FE 100%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'Inter, system-ui, sans-serif',
-        padding: '32px 24px',
       }}
     >
-      <div
-        style={{
-          background: 'rgba(255,255,255,0.65)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255,255,255,0.85)',
-          borderRadius: 24,
-          padding: '40px 32px',
-          maxWidth: 320,
-          width: '100%',
-          boxShadow: '0 8px 32px rgba(99,102,241,0.1)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 0,
-        }}
-      >
+      <div className="glass-strong rounded-3xl px-8 py-10 max-w-sm w-full flex flex-col items-center">
+        {/* Logo */}
         <div
+          className="w-[72px] h-[72px] rounded-3xl flex items-center justify-center text-white font-extrabold text-[22px]"
           style={{
-            width: 72,
-            height: 72,
-            borderRadius: 24,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             background: 'linear-gradient(135deg, #6366F1, #0EA5E9)',
             boxShadow: '0 12px 24px rgba(79,70,229,0.2)',
-            color: 'white',
-            fontWeight: 800,
-            fontSize: 22,
           }}
         >
           AI
         </div>
 
-        <h1
-          style={{
-            fontFamily: "'Baloo 2', cursive",
-            fontSize: 32,
-            fontWeight: 800,
-            margin: '16px 0 4px',
-            color: '#4F46E5',
-          }}
-        >
+        <h1 className="font-brand text-[32px] font-extrabold mt-4 mb-1 text-primary-dark">
           PintarAI
         </h1>
 
-        <p style={{ color: '#64748B', fontSize: 14, margin: '0 0 28px', textAlign: 'center' }}>
-          {status}
-        </p>
+        <SegmentedProgress
+          value={progress}
+          label={status}
+          segments={20}
+          showPercentage={true}
+          showDemo={false}
+          className="w-full"
+        />
 
-        <div
-          style={{
-            width: '100%',
-            height: 6,
-            background: 'rgba(99,102,241,0.12)',
-            borderRadius: 9999,
-            overflow: 'hidden',
-          }}
-        >
-          <motion.div
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
-            style={{
-              height: '100%',
-              background: 'linear-gradient(90deg, #818CF8, #6366F1)',
-              borderRadius: 9999,
-            }}
-          />
-        </div>
-
-        <p style={{ color: '#94A3B8', fontSize: 12, marginTop: 12, textAlign: 'center' }}>
+        <p className="text-text-muted/60 text-xs mt-4 text-center">
           {progress < 100
-            ? 'Menyiapkan AI lokal... unduhan pertama bisa memakan waktu beberapa menit.'
+            ? 'Unduhan pertama \u00b12.5GB \u2014 pastikan terhubung WiFi. Setelah itu AI bekerja offline.'
             : 'AI siap!'}
         </p>
       </div>
